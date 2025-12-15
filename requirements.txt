@@ -1,4 +1,10 @@
 fastapi
 uvicorn[standard]
 pydub
-google-genai 
+google-genai
+python-json-logger
+pre-commit
+ruff
+black
+python-multipart
+audioop-lts
