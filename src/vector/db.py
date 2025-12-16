@@ -6,6 +6,7 @@ from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 logger = get_logger(__name__)
 
 
+# TODO migrate the module from vertexai.language_models to google-genai as its depricating
 class Database:
     def __init__(self):
         """Initialize database connection."""

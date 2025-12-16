@@ -46,9 +46,9 @@ def prepare_llm_input(
     }]
     """
     # take input as the configs and give structured dict output after reading files
-    prompt_file_path = input_config.get("PROMPT_FILE_PATH", None)
-    system_instruction_file_path = input_config.get("SYSTEM_INSTRUCTION_FILE_PATH", None)
-    response_schema_file_path = input_config.get("RESPONSE_SCHEMA_FILE_PATH", None)
+    prompt_file_path = input_config.PROMPT_FILE_PATH
+    system_instruction_file_path = input_config.SYSTEM_INSTRUCTION_FILE_PATH
+    response_schema_file_path = input_config.RESPONSE_SCHEMA_FILE_PATH
 
     prompt = None
     system_instruction = None
@@ -75,8 +75,8 @@ def prepare_llm_input(
                 )
 
     llm_input = {
-        "model": input_config.get("model"),
-        "token_limit": input_config.get("token_limit"),
+        "model": input_config.MODEL,
+        "token_limit": input_config.TOKEN_LIMIT,
         "prompt": prompt,
         "system_instruction": system_instruction,
         "response_schema": response_schema,

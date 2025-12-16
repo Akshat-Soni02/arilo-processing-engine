@@ -86,16 +86,19 @@ def smart_branch(
         # Execute noteback LLM call with prepared context
         logger.info("[SMART BRANCH] Step 4/4: Executing noteback LLM call...")
 
+        formatted_sentences_str = "\n".join(formatted_sentences)
+        similarity_context_str = "\n".join(similarity_context)
+
         replace = [
             {
                 "type": "prompt",
                 "replace_key": "{{current_note}}",
-                "replace_value": formatted_sentences,
+                "replace_value": formatted_sentences_str,
             },
             {
                 "type": "prompt",
                 "replace_key": "{{history_context}}",
-                "replace_value": similarity_context,
+                "replace_value": similarity_context_str,
             },
         ]
 
