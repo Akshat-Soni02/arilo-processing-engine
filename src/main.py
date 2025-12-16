@@ -17,6 +17,20 @@ logger = get_logger(__name__)
 # ==================== LLM Client Initialization ====================
 # Initialize Gemini clients at startup for reuse
 # Each provider gets its own client instance for independent scaling
+project_root = Path(__file__).parent.parent
+cred_path = project_root / "credentials.json"
+if cred_path.exists():
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(cred_path)
+    logger.info("Set GOOGLE_APPLICATION_CREDENTIALS from local file.")
+else:
+    logger.warning(
+        "credentials.json not found; relying on Application Default Credentials or gcloud config."
+    )
+
+
+print(Project.PROJECT_ID)
+
+# vertexai.init(project=Project.PROJECT_ID, location=Project.LOCATION)
 
 gemini_client = genai.Client(
     vertexai=Project.ENABLE_VERTEX_AI, project=Project.PROJECT_ID, location=Project.LOCATION
@@ -33,15 +47,6 @@ logger.info("Initialized STT, Smart, and Noteback providers")
 vector_db = Database()
 logger.info("Initialized Vector Database")
 
-cred_path = Path(__file__).parent / "credentials.json"
-if cred_path.exists():
-    os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(cred_path))
-else:
-    logger.warning(
-        "credentials.json not found; set GOOGLE_APPLICATION_CREDENTIALS to a valid service account file."
-    )
-
-
 input = read_file("test.wav", is_audio=True)
 
 
@@ -54,12 +59,14 @@ input = read_file("test.wav", is_audio=True)
 
 def run_stt():
     response, cost_data = stt_branch(stt_provider, input, User_Input_Type.AUDIO_WAV)
+    print(response)
 
 
 def run_smart():
     response, cost_data = smart_branch(
         smart_provider, noteback_provider, vector_db, input, User_Input_Type.AUDIO_WAV
     )
+    print(response)
 
 
 # Server health check endpoint
@@ -68,6 +75,9 @@ def health():
     logger.info("Health check working")
     return {"status": "ok"}
 
+
+# run_stt()
+# run_smart()
 
 # Testing endpoints
 

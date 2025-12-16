@@ -183,6 +183,12 @@ class GeminiProvider:
 
         if model is None or prompt is None or token_limit is None or system_instruction is None:
             logger.warning("Cannot process llm request, missing required fields")
+            logger.warning(model)
+            logger.warning(prompt)
+            logger.warning(token_limit)
+            logger.warning(system_instruction)
+            logger.warning(response_schema)
+            logger.warning(input_type)
             raise ValueError("Missing required fields")
 
         content_part = None
