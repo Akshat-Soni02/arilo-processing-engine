@@ -1,16 +1,59 @@
 from typing import Annotated
 from fastapi import FastAPI, UploadFile, File
-from services.audio_augmentation import AudioAugmentation
-from services.llm_service import ConfigDict
-from common.logging import get_logger
+import threading
+from contextlib import asynccontextmanager
+from typing import Dict, Any
 
-app = FastAPI()
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse
+
+from services.pubsub.pubsub_service import PubSubService
+from common.logging import get_logger, configure_logging
+from config.settings import ARILO_SUBSCRIPTION_ID, APP_ENV, LOG_LEVEL
+
+# Configure logging
+configure_logging(env=APP_ENV, level=LOG_LEVEL)
 logger = get_logger(__name__)
 
-# TODO
-# Auth middleware for inter service requests
-# DB Setup for process state management & metadata storing
+app = FastAPI(title="Arilo Processing Engine", version="1.0.0")
 
+# Global state
+listener_future = None
+pubsub_service = PubSubService(SUBSCRIPTION_ID=ARILO_SUBSCRIPTION_ID)
+@app.on_event("startup")
+async def startup_event():
+    """Starts the Pub/Sub listener on application startup."""
+    global listener_future
+    logger.info("Starting Pub/Sub listener...")
+
+    def run_listener():
+        global listener_future
+        listener_future = pubsub_service.start_listener()
+        try:
+            listener_future.result()
+        except Exception as e:
+            print(f"Listener error: {e}")
+    listener_thread = threading.Thread(target=run_listener, daemon=True)
+    listener_thread.start()
+    logger.info("Pub/Sub listener started.")
+    
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stops the Pub/Sub listener on application shutdown."""
+    global listener_future
+    if listener_future:
+        logger.info("Stopping Pub/Sub listener...")
+        pubsub_service.stop_listener(listener_future)
+        logger.info("Pub/Sub listener stopped.")
+
+@app.post("/publish")
+async def publish_message(data: dict, attributes: Dict[str, str] | None = None):
+    """Publish a message to Pub/Sub with optional attributes."""
+    try:
+        message_id = pubsub_service.publish_message(data, attributes=attributes or {})
+        return {"status": "success", "message_id": message_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Server health check endpoint
 @app.get("/health")
@@ -19,40 +62,3 @@ def health():
     return {"status": "ok"}
 
 
-# Testing endpoints
-
-
-# TOREMOVE
-# Add support to take audios as input  done
-# log audio format & audio properties  already
-# log data came after processing audio - processing time,
-# processed audio time, processed audio format [if changed]
-# Appropriate errors when - failed to find lib, failed to process due to upstream, failure due to server issues, warnings when taking longer then expected time [comparison against predetermined time with ref to some metric]
-@app.post("/augment-audio")
-async def augment_audio(audio_file: Annotated[UploadFile, File()]):
-    audio_bytes = await audio_file.read()
-
-    service = AudioAugmentation({})
-    audio = service.run_pipeline(audio_bytes)
-
-    with open("output_audio.wav", "wb") as f:
-        f.write(audio)
-    return {"message": "Audio augmentation endpoint"}
-
-
-@app.post("/llm-test")
-def llm_test():
-    from services.llm_service import LLMService
-
-    config = {
-        "provider": "gemini",
-        "api_key": "AQ.Ab8RN6LbX-AmjvGNCW_E0Q7gi30mD7atLhLcGCHEKJbHQniZbw",
-        "model_name": "gemini-2.5-flash",
-        "temperature": 0.5,
-        "max_tokens": 150,
-    }
-
-    config = ConfigDict(**config)
-    llm_service = LLMService(config)
-    response = llm_service.process("Hello, how are you?")
-    return {"llm_response": response.content}

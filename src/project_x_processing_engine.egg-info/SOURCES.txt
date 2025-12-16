@@ -13,4 +13,6 @@ src/schemas/llm_types.py
 src/services/__init__.py
 src/services/audio_augmentation.py
 src/services/llm_service.py
+src/services/pubsub/init.py
+src/services/pubsub/main.py
 src/util/llm_util.py
