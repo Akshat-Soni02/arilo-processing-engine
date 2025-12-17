@@ -14,6 +14,7 @@ LLM_SERVICE_ACCOUNT_PATH = os.getenv("LLM_SERVICE_ACCOUNT_PATH", "")
 GCS_SERVICE_ACCOUNT_PATH = os.getenv("GCS_SERVICE_ACCOUNT_PATH", "")
 ARILO_SUBSCRIPTION_ID = os.getenv("ARILO_SUBSCRIPTION_ID", "arilo-llm-subscription")
 SMART_SUBSCRIPTION_ID = os.getenv("SMART_SUBSCRIPTION_ID", "smart-llm-subscription")
+UPSTREAM_URL = os.getenv("UPSTREAM_URL", "http://localhost:8080")
 
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -27,7 +28,7 @@ required_vars = [
     "GCP_PROJECT_ID",
     "ARILO_SUBSCRIPTION_ID",
     "SMART_SUBSCRIPTION_ID",
-    "PUBSUB_SERVICE_ACCOUNT_PATH"
+    "PUBSUB_SERVICE_ACCOUNT_PATH",
 ]
 
 for var in required_vars:

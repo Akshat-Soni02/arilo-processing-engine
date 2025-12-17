@@ -2,7 +2,9 @@ import threading
 import os
 from pathlib import Path
 from common.logging import get_logger, configure_logging
-from config.settings import ARILO_SUBSCRIPTION_ID,SMART_SUBSCRIPTION_ID ,APP_ENV, LOG_LEVEL
+from config.settings import ARILO_SUBSCRIPTION_ID, SMART_SUBSCRIPTION_ID, APP_ENV, LOG_LEVEL
+
+from fastapi import Request
 
 # Configure logging
 configure_logging(env=APP_ENV, level=LOG_LEVEL)
@@ -19,14 +21,10 @@ else:
     )
 
 
-from contextlib import asynccontextmanager 
-from typing import Dict, Any,Optional
-from datetime import datetime
-from fastapi import FastAPI, UploadFile, File,HTTPException, status
+from contextlib import asynccontextmanager
+from typing import Dict, Any, Optional
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from google import genai
-from vector.db import Database
-from pydantic import BaseModel,Field,field_validator
 from services.pubsub.pubsub_service import PubSubService
 
 
@@ -41,20 +39,19 @@ logger.info("Initialized STT, Smart, and Noteback providers")
 logger.info("Initialized Vector Database")
 
 
-
 @asynccontextmanager
-async def lifespan(app:FastAPI):
+async def lifespan(app: FastAPI):
     """
     Manage application lifecycle (startup/shutdown).
     Handles Pub/Sub listener initialization and cleanup.
     """
     # Startup
     logger.info("Application startup: initializing Pub/Sub service")
-    
+
     try:
-       # ensure these come from config.settings
-        services["stt"] = PubSubService(SUBSCRIPTION_ID=ARILO_SUBSCRIPTION_ID,NAME="stt")
-        services["smart"] = PubSubService(SUBSCRIPTION_ID=SMART_SUBSCRIPTION_ID,NAME="smart")
+        # ensure these come from config.settings
+        services["stt"] = PubSubService(SUBSCRIPTION_ID=ARILO_SUBSCRIPTION_ID, NAME="stt")
+        services["smart"] = PubSubService(SUBSCRIPTION_ID=SMART_SUBSCRIPTION_ID, NAME="smart")
 
         def run_listener(label: str):
             try:
@@ -63,19 +60,21 @@ async def lifespan(app:FastAPI):
                 future.result()
             except Exception as e:
                 logger.error(f"Listener error ({label}): {e}", exc_info=True)
-                
+
         threading.Thread(target=run_listener, args=("stt",), daemon=True).start()
         threading.Thread(target=run_listener, args=("smart",), daemon=True).start()
         logger.info("Pub/Sub listeners started: stt, smart")
-        logger.info("Starting listeners",
+        logger.info(
+            "Starting listeners",
             extra={
-              "stt_subscription": services["stt"].subscription_path,
-              "smart_subscription": services["smart"].subscription_path,
-            })
+                "stt_subscription": services["stt"].subscription_path,
+                "smart_subscription": services["smart"].subscription_path,
+            },
+        )
 
         yield
 
-    # Shutdown
+        # Shutdown
         logger.info("Shutdown: stopping Pub/Sub listeners")
         for label, svc in services.items():
             try:
@@ -87,7 +86,8 @@ async def lifespan(app:FastAPI):
     except Exception as e:
         logger.critical(f"Critical error during startup/shutdown: {e}", exc_info=True)
         raise
-    
+
+
 app = FastAPI(
     title="Arilo Processing Engine",
     description="Audio processing engine with Google Cloud Pub/Sub integration",
@@ -95,8 +95,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Server health check endpoint
 @app.get("/health")
 def health():
     logger.info("Health check working")
     return {"status": "ok"}
+
+
+@app.post("/processed-output")
+async def mock_process_output(request: Request):
+    body = await request.json()
+    # body is now a dict
+    logger.info(f"Received processed output: {body}")
+    return JSONResponse(content={"status": "ok"})

@@ -12,14 +12,16 @@ dependencies = [
     "ruff",
     "black",
     "pre-commit",
-    "python-json-logger"
-    "audioop-lts"
     "python-json-logger",
+    "audioop-lts",
     "google-cloud-storage",
     "psycopg",
     "google-cloud-aiplatform",
     "numpy",
-    "pandas"
+    "pandas",
+    "google-cloud-pubsub",
+    "python-dotenv",
+    "google-auth"
 ]
 
 
@@ -29,7 +31,7 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 select = ["E", "F", "W"]
-ignore = ["E501"]
+ignore = ["E501", "E402"]
 
 [tool.black]
 line-length = 100

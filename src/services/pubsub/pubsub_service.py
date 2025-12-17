@@ -1,33 +1,33 @@
 import json
 import threading
-from typing import Dict, Any,Optional
-from datetime import datetime
+from typing import Optional
 
 import google.cloud.pubsub_v1 as pubsub_v1
 from google.oauth2 import service_account
-from google.api_core.retry import Retry
-from google.api_core import exceptions
 from common.utils import get_input_data
 
-from services.llm.llm_service import run_smart,run_stt
+from util.util import upstream_call
 
-from services.llm.llm_service import run_smart,run_stt
+from services.llm.llm_service import run_smart, run_stt
+
 
 from config.settings import (
     GCP_PROJECT_ID,
-    GCP_LOCATION,
-    PUBSUB_TOPIC_ID,
-    ARILO_SUBSCRIPTION_ID,
     PUBSUB_SERVICE_ACCOUNT_PATH,
 )
+from config.config import User_Input_Type
 
 from common.logging import get_logger
 
 logger = get_logger(__name__)
 
+
 class PubsubServiceError(Exception):
     """Custom exception for Pub/Sub service errors."""
+
     pass
+
+
 class PubSubService:
     """
     Production-ready Pub/Sub service with:
@@ -36,24 +36,24 @@ class PubSubService:
     - Structured logging
     - Graceful start/stop
     """
-    def __init__(self,SUBSCRIPTION_ID,NAME):
+
+    def __init__(self, SUBSCRIPTION_ID, NAME):
         """
         Initialize Pub/Sub service.
-        
+
         Args:
             SUBSCRIPTION_ID: The subscription ID to listen to
             max_concurrent_messages: Max number of messages to process concurrently
-            
+
         Raises:
             PubSubServiceError: If required configuration is missing
         """
         if not GCP_PROJECT_ID:
-            raise PubSubServiceError("GCP_PROJECT_ID not configured")
+            raise PubsubServiceError("GCP_PROJECT_ID not configured")
         if not PUBSUB_SERVICE_ACCOUNT_PATH:
-            raise PubSubServiceError("PUBSUB_SERVICE_ACCOUNT_PATH not configured")
+            raise PubsubServiceError("PUBSUB_SERVICE_ACCOUNT_PATH not configured")
         if not SUBSCRIPTION_ID:
-            raise PubSubServiceError("SUBSCRIPTION_ID not configured")
-        
+            raise PubsubServiceError("SUBSCRIPTION_ID not configured")
 
         self.credentials = service_account.Credentials.from_service_account_file(
             PUBSUB_SERVICE_ACCOUNT_PATH
@@ -73,12 +73,11 @@ class PubSubService:
             extra={
                 "project_id": GCP_PROJECT_ID,
                 "subscription_path": self.subscription_path,
-                "max_concurrent":10,
+                "max_concurrent": 10,
             },
         )
-    
-    
-    def process_message(self,message:pubsub_v1.subscriber.message.Message,source:str):
+
+    def process_message(self, message: pubsub_v1.subscriber.message.Message, source: str):
         """Callback to process received Pub/Sub messages."""
         try:
             raw = message.data.decode("utf-8")
@@ -86,26 +85,31 @@ class PubSubService:
                 payload = json.loads(raw)
             except json.JSONDecodeError:
                 logger.warning(
-                "Received non-JSON message",
-                extra={"raw": raw, "message_id": message.message_id}
-            )
+                    "Received non-JSON message",
+                    extra={"raw": raw, "message_id": message.message_id},
+                )
                 payload = {"raw": raw}
-            
+
             logger.info(
                 "Received Pub/Sub message",
                 extra={
                     "message_id": message.message_id,
                     "payload": payload,
                     "attributes": dict(message.attributes or {}),
-                    "publish_time": message.publish_time.isoformat() if message.publish_time else None,
-                }
+                    "publish_time": (
+                        message.publish_time.isoformat() if message.publish_time else None
+                    ),
+                },
             )
-            
-            self.handle_message(payload,source=source)
+
+            self.handle_message(payload, source=source)
             message.ack()
             logger.info(f"Acknowledged message ID: {message.message_id}")
         except Exception as e:
-            logger.error(f"Error processing message ID: {getattr(message,'message_id',None)}: {e}", exc_info=True)
+            logger.error(
+                f"Error processing message ID: {getattr(message,'message_id',None)}: {e}",
+                exc_info=True,
+            )
             try:
                 message.nack()
             except Exception:
@@ -113,43 +117,77 @@ class PubSubService:
             except Exception as e:
                 logger.error(f"Error processing message ID: {message.message_id}: {e}")
             # Optionally, you can choose to not acknowledge the message to have it redelivered.
-    
-    def handle_message(self, payload:dict,source:str):
+
+    def handle_message(self, payload: dict, source: str):
         """Overide this method with your business logic to process the message."""
-        
+
         data = payload.get("data")
         gcs_audio_url = data.get("gcs_audio_url") if data else None
+        input_text = data.get("input_text") if data else None
         note_id = data.get("note_id") if data else None
         user_id = data.get("user_id") if data else None
         location = data.get("location") if data else None
         timestamp = data.get("timestamp") if data else None
+        input_type = data.get("input_type") if data else None
 
-        input_data = get_input_data(gcs_audio_url)
-        print(f"Fetched input data from {gcs_audio_url}: {len(input_data) if input_data else 'None'} bytes")
+        input_data = None
+        if input_type == User_Input_Type.AUDIO_WAV:
+            if gcs_audio_url is None:
+                raise PubsubServiceError("GCS audio url is required for audio input type")
+            input_data = get_input_data(gcs_audio_url)
+
+        if input_type == User_Input_Type.TEXT_PLAIN:
+            if input_text is None:
+                raise PubsubServiceError("Input text is required for text input type")
+            input_data = input_text
+
+        print(
+            f"Fetched input data from {gcs_audio_url}: {len(input_data) if input_data else 'None'} bytes"
+        )
         if source == "stt":
-            # response,metrics =run_stt()
-            # logger.info(f"STT response: {response}, metrics: {metrics}")
-            pass
+            response, metrics = run_stt(input_data)
+            logger.info(f"STT response: {response}, metrics: {metrics}")
+
+            upstream_output = {
+                "note_id": note_id,
+                "user_id": user_id,
+                "location": location,
+                "timestamp": timestamp,
+                "processed_output": response,
+                "branch": "stt",
+                "metrics": metrics,
+            }
+
+            upstream_call(upstream_output)
+
         elif source == "smart":
-            pass
-            # response,metrics = run_smart()
-            # logger.info(f"SMART response: {response}, metrics: {metrics}")
-            
-            
+            response, metrics = run_smart(input_data)
+            logger.info(f"SMART response: {response}, metrics: {metrics}")
+
+            upstream_output = {
+                "note_id": note_id,
+                "user_id": user_id,
+                "location": location,
+                "timestamp": timestamp,
+                "processed_output": response,
+                "branch": "smart",
+                "metrics": metrics,
+            }
+            upstream_call(upstream_output)
 
     def start_listener(self):
         """
         Start the Pub/Sub listener (idempotent).
-        
+
         Returns:
             StreamingPullFuture for the listener
-            
+
         Raises:
             PubSubServiceError: If listener fails to start
         """
 
         def callback_wrapper(message):
-            self.process_message(message,source= self.name)
+            self.process_message(message, source=self.name)
 
         with self.lock:
             if self.listener_future and not self.listener_future.cancelled():
@@ -161,7 +199,7 @@ class PubSubService:
                     raise ValueError("Pub/Sub subscription path is not set.")
 
                 streaming_pull_future = self.subscriber.subscribe(
-                    self.subscription_path, 
+                    self.subscription_path,
                     callback=callback_wrapper,
                     flow_control=self.flow_control,
                 )
@@ -171,8 +209,8 @@ class PubSubService:
             except Exception as e:
                 logger.error(f"Error starting listener: {e}")
                 raise
-    
-    def stop_listener(self,streaming_pull_future):
+
+    def stop_listener(self, streaming_pull_future):
         """Stops the Pub/Sub subscription listener."""
         try:
             streaming_pull_future.cancel()
@@ -180,5 +218,3 @@ class PubSubService:
         except Exception as e:
             logger.error(f"Error stopping listener: {e}")
             raise
-
-
