@@ -4,7 +4,7 @@ Handles vector database operations and formatting for contextually-aware LLM gen
 """
 
 from common.logging import get_logger
-from vector.db import Database
+from db.db import Database
 
 logger = get_logger(__name__)
 
