@@ -4,6 +4,7 @@ Handles response validation and centralized error management for all LLM interac
 """
 
 from common.logging import get_logger
+from pipeline.exceptions import FatalPipelineError, TransientPipelineError
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,8 @@ def call_llm(provider, input_data: dict, call_name: str):
 
         return response, metrics
 
+    except (FatalPipelineError, TransientPipelineError):
+        raise
     except ValueError as e:
         logger.error(
             "Validation error in LLM call",
@@ -69,3 +72,6 @@ def call_llm(provider, input_data: dict, call_name: str):
             exc_info=True,
         )
         return None, None
+
+
+# def add_llm_metrics(metrics: dict):

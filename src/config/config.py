@@ -19,6 +19,30 @@ class Llm_Call:
     NOTEBACK = "noteback"
 
 
+class Pipeline(str, Enum):
+    STT = "stt"
+    SMART = "smart"
+
+
+class Pipeline_Stage_Status(str, Enum):
+    IN_PROGRESS = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    PENDING = "pending"
+
+
+class Pipeline_Stage_Errors(str, Enum):
+    ATTEMPT_COUNT_EXCEEDED = "attempt_count_exceeded"
+    LLM_ERROR = "llm_error"
+    INTERNAL_ERROR = "internal_error"
+
+
+# class Pipeline_Stage(str, Enum):
+#     STT = "stt"
+#     SMART_CONTEXT = "smart_context"
+#     SMART_NOTEBACK = "smart_noteback"
+
+
 class User_Input_Type(str, Enum):
     AUDIO_WAV = "audio/wav"
     TEXT_PLAIN = "text/plain"
