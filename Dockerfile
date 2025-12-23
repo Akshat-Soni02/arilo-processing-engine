@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # Stage 2: Runtime
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 # 1. Install system tools + ffmpeg for pydub + curl for healthcheck
 RUN apt-get update && apt-get install -y \
