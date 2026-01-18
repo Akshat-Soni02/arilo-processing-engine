@@ -32,24 +32,14 @@ Ever commit auto lints the project
 - We depend on pyproject.toml file for depedencies & setup
 - Run this to create a virtual env
 ```
-python3 -m venv venv
+uv venv
 ```
 
-- Run this to activate venv
-```
-source venv/bin/activate
-```
+- uv handles selection of venv so we can just run the server with the following command
 
-- then Run
-```
-pip install -e . ".[dev]"
-```
-this performs an "editable" installation of the Python package located in the current directory
-
-- Now run the project with
 ```bash
 # With uv (recommended - handles dependencies automatically)
-PYTHONPATH=src uv run uvicorn src.main:app --reload --reload-dir src
+uv run uvicorn --app-dir src main:app --reload
 
 # Or without uv (using activated venv)
 uvicorn src.main:app --reload --reload-dir src
@@ -65,5 +55,7 @@ uvicorn src.main:app --reload --reload-dir src
 - Once all the resources are up
 - Take a look at workflow files in .github/workflows
 - the workflow file first builds the image and then deploys it
+- Env and Vars are stored in github
+
 
 

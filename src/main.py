@@ -171,6 +171,8 @@ def _handle_stage_checkout(db: Database, pipeline_type: Pipeline, data: dict, co
     job_id = data.get("job_id")
     pipeline_name = pipeline_type.value
 
+    logger.info("Processing request", extra={"job_id": job_id, "pipeline": pipeline_name})
+
     try:
         pipeline_stage = db.read_stage(job_id, pipeline_name)
     except Exception as e:
@@ -225,8 +227,6 @@ def _handle_stage_checkout(db: Database, pipeline_type: Pipeline, data: dict, co
             return None, JSONResponse(
                 status_code=400, content={"error": "Failed to handle completed stage output"}
             )
-
-    print(pipeline_stage)
 
     # Ignore if attempt count exceeded
     if pipeline_stage.get("attempt_count") >= MAX_PIPELINE_STAGE_ATTEMPTS:
@@ -304,7 +304,8 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
                 status_code=200, content={"error": "Ignored invalid message format"}
             )
 
-        data = payload.get("data", {})
+        data = payload
+        logger.info("Received request", extra={"data": data})
         context = {
             "job_id": data.get("job_id"),
             "note_id": data.get("note_id"),
@@ -312,6 +313,7 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             "location": data.get("location"),
             "timestamp": data.get("timestamp"),
             "input_type": data.get("input_type"),
+            # "existing_tags": data.get("existing_tags")
         }
 
         # DB Stage Handling and Checkout
@@ -351,12 +353,11 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
                 "Fatal pipeline error, acking message", extra={"error": str(e)}, exc_info=True
             )
             request.app.state.vector_db.update_pipeline_stage_status(
-                context["pipeline_stage_id"], pipeline_type.value, Pipeline_Stage_Status.FAILED
+                context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
             )
             request.app.state.vector_db.update_pipeline_stage_error(
                 context["pipeline_stage_id"],
-                pipeline_type.value,
-                Pipeline_Stage_Errors.FATAL_PIPELINE_ERROR,
+                Pipeline_Stage_Errors.INTERNAL_ERROR,
             )
             _send_upstream_status(
                 data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
@@ -369,12 +370,15 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             logger.warning(
                 "Transient pipeline error, retrying message", extra={"error": str(e)}, exc_info=True
             )
+
             return JSONResponse(status_code=503, content={"status": "transient_pipeline_error"})
 
     except Exception as e:
         logger.critical(
             "Unexpected error in request handler", extra={"error": str(e)}, exc_info=True
         )
+        # TODO: update pipeline status to failed
+        _send_upstream_status(data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e)
         return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 
@@ -396,14 +400,4 @@ async def stt_branch(request: Request):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
-
-
-@app.post("/processed-output")
-async def upstream_call_endpoint(request: Request):
-    """
-    Mock upstream endpoint for testing callbacks.
-    """
-    data = await request.json()
-    logger.debug("Upstream processed output received", extra={"data": data})
     return {"status": "ok"}

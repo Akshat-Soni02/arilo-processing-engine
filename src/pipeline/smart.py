@@ -6,12 +6,19 @@ Processes input to generate context and final notes using Vector DB and LLMs.
 from typing import Any, Dict, Optional, Tuple
 from config.config import Llm_Call, User_Input_Type, Pipeline as PipelineEnum
 from db.db import Database
-from impl.context_utils import format_sentences, prepare_context_for_noteback
+from impl.context_utils import (
+    format_sentences,
+    prepare_context_for_noteback,
+    current_note_sentences_with_embeddings,
+)
 from impl.gemini import GeminiProvider
 from impl.llm_input import get_llm_input
 from impl.llm_processor import call_llm
 from pipeline.base import Pipeline
 from pipeline.exceptions import FatalPipelineError, TransientPipelineError
+from common.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class SmartPipeline(Pipeline):
@@ -72,7 +79,13 @@ class SmartPipeline(Pipeline):
             self.logger.warning("Context preparation returned null metrics")
         else:
             try:
-                self._write_metrics(context["pipeline_stage_id"], Llm_Call.SMART, context_metrics)
+                self._write_metrics(
+                    context["job_id"],
+                    context["user_id"],
+                    context["pipeline_stage_id"],
+                    Llm_Call.SMART,
+                    context_metrics,
+                )
             except Exception as e:
                 self.logger.error("Failed to write metrics", extra={"error": str(e)})
 
@@ -82,7 +95,9 @@ class SmartPipeline(Pipeline):
             )
 
         try:
-            similarity_context = prepare_context_for_noteback(context_response, self.db)
+            similarity_context = prepare_context_for_noteback(
+                context_response, self.db, context["user_id"]
+            )
         except (TransientPipelineError, FatalPipelineError):
             raise
         except Exception as e:
@@ -94,6 +109,17 @@ class SmartPipeline(Pipeline):
             raise
         except Exception as e:
             raise TransientPipelineError("Failed to format sentences", original_error=e)
+
+        try:
+            sentences_with_embeddings = current_note_sentences_with_embeddings(
+                context_response, self.db
+            )
+        except (TransientPipelineError, FatalPipelineError):
+            raise
+        except Exception as e:
+            raise TransientPipelineError(
+                "Failed to prepare sentences with embeddings", original_error=e
+            )
 
         try:
             formatted_sentences_str = "\n".join(formatted_sentences) if formatted_sentences else ""
@@ -142,9 +168,22 @@ class SmartPipeline(Pipeline):
         else:
             try:
                 self._write_metrics(
-                    context["pipeline_stage_id"], Llm_Call.NOTEBACK, noteback_metrics
+                    context["job_id"],
+                    context["user_id"],
+                    context["pipeline_stage_id"],
+                    Llm_Call.NOTEBACK,
+                    noteback_metrics,
                 )
             except Exception as e:
                 self.logger.error("Failed to write metrics", extra={"error": str(e)})
 
-        return noteback_response, noteback_metrics
+        smart_response = {
+            "sentences_with_embeddings": sentences_with_embeddings,
+            "noteback_response": noteback_response,
+        }
+
+        logger.debug(
+            "Smart pipeline execution completed successfully", extra={"response": smart_response}
+        )
+
+        return smart_response, noteback_metrics
