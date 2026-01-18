@@ -31,7 +31,9 @@ def upstream_call(upstream_output: dict):
     """
     logger.debug("Transmitting output to upstream", extra={"data": upstream_output})
     try:
-        response = requests.post(f"{API_URL}/processed-output", json=upstream_output, timeout=10)
+        response = requests.post(
+            f"{API_URL}/api/v1/notes/engine/callback", json=upstream_output, timeout=20
+        )
         response.raise_for_status()
         logger.debug("Upstream transmission successful", extra={"response": response.text})
     except requests.exceptions.HTTPError as e:

@@ -14,27 +14,27 @@ class Models:
 
 
 class Llm_Call:
-    STT = "stt"
-    SMART = "smart"
-    NOTEBACK = "noteback"
+    STT = "STT"
+    SMART = "SMART"
+    NOTEBACK = "NOTEBACK"
 
 
 class Pipeline(str, Enum):
-    STT = "stt"
-    SMART = "smart"
+    STT = "STT"
+    SMART = "SMART"
 
 
 class Pipeline_Stage_Status(str, Enum):
-    IN_PROGRESS = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    PENDING = "pending"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    PENDING = "PENDING"
 
 
 class Pipeline_Stage_Errors(str, Enum):
-    ATTEMPT_COUNT_EXCEEDED = "attempt_count_exceeded"
-    LLM_ERROR = "llm_error"
-    INTERNAL_ERROR = "internal_error"
+    ATTEMPT_COUNT_EXCEEDED = "ATTEMPT_COUNT_EXCEEDED"
+    LLM_ERROR = "LLM_ERROR"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 # class Pipeline_Stage(str, Enum):

@@ -117,6 +117,8 @@ class Pipeline(ABC):
             "error": error_info,
         }
 
+        self.logger.info("Sending upstream payload", extra={"payload": upstream_payload})
+
         # Final callback to upstream
         self._send_upstream(upstream_payload)
 
@@ -148,11 +150,18 @@ class Pipeline(ABC):
             # upstream_call already logs errors, but we catch here to ensure run() doesn't crash
             self.logger.error("Failed to send upstream", extra={"error": str(e)})
 
-    def _write_metrics(self, pipeline_stage_id: str, llm_call: Llm_Call, metrics: Dict[str, Any]):
+    def _write_metrics(
+        self,
+        job_id: str,
+        user_id: str,
+        pipeline_stage_id: str,
+        llm_call: Llm_Call,
+        metrics: Dict[str, Any],
+    ):
         """
         Write metrics to the database.
         """
         try:
-            self.db.write_metrics(pipeline_stage_id, llm_call, metrics)
+            self.db.write_metrics(user_id, job_id, pipeline_stage_id, llm_call, metrics)
         except Exception as e:
             self.logger.error("Failed to write metrics", extra={"error": str(e)})

@@ -56,10 +56,23 @@ class SttPipeline(Pipeline):
             raise FatalPipelineError("LLM call failed", original_error=e)
 
         if metrics is None:
-            self.logger.warning("Processing returned empty metrics")
+            self.logger.warning(
+                "Processing returned empty metrics",
+                extra={
+                    "job_id": context["job_id"],
+                    "user_id": context["user_id"],
+                    "pipeline_stage_id": context["pipeline_stage_id"],
+                },
+            )
         else:
             try:
-                self._write_metrics(context["pipeline_stage_id"], Llm_Call.STT, metrics)
+                self._write_metrics(
+                    context["job_id"],
+                    context["user_id"],
+                    context["pipeline_stage_id"],
+                    Llm_Call.STT,
+                    metrics,
+                )
             except Exception as e:
                 self.logger.error("Failed to write metrics", extra={"error": str(e)})
 
