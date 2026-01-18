@@ -218,6 +218,7 @@ class GeminiProvider:
             "thought_tokens": thought_tokens,
             "confidence_score": confidence_score,
             "elapsed_time": elapsed_time,
+            "model": model,
         }
 
         if token_count_error:

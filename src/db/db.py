@@ -136,15 +136,14 @@ class Database:
     #         int: Total characters processed for billing/tracking purposes.
     #     """
     #     insert_query = """
-    #     INSERT INTO user_notes (user_id, note_id, sentence_index, sentence_text, embedding, language, importance_score)
-    #     VALUES (%s, %s, %s, %s, %s, %s, %s)
+    #     INSERT INTO note_sentences (user_id, note_id, sentence_index, sentence_text, embedding, importance_score)
+    #     VALUES (%s, %s, %s, %s, %s, %s)
     #     ON CONFLICT (user_id, note_id, sentence_index) DO NOTHING;
     #     """
     #     total_chars = 0
     #     for sentence in sentences:
     #         sentence_index = sentence["sentence_index"]
     #         sentence_text = sentence["sentence_text"]
-    #         language = sentence.get("language", "en")
     #         embedding, char_count = self._generate_sentence_embedding(sentence_text)
     #         total_chars += char_count
     #         importance_score = sentence.get("importance_score", 0)
@@ -156,7 +155,6 @@ class Database:
     #                 sentence_index,
     #                 sentence_text,
     #                 embedding,
-    #                 language,
     #                 importance_score,
     #             ),
     #         )
@@ -187,8 +185,8 @@ class Database:
                 sentence_text,
                 embedding <=> %s::vector AS distance,
                 importance_score,
-                EXTRACT(EPOCH FROM timestamp) AS ts_epoch
-            FROM user_notes
+                EXTRACT(EPOCH FROM created_at) AS ts_epoch
+            FROM note_sentences
             WHERE user_id = %s
         )
         , stats AS (
@@ -281,23 +279,31 @@ class Database:
     #   deleted_at timestamp
     # }
 
-    def write_metrics(self, pipeline_stage_id: str, llm_call: Llm_Call, metrics: dict):
+    def write_metrics(
+        self, user_id: str, job_id: str, pipeline_stage_id: str, llm_call: Llm_Call, metrics: dict
+    ):
         """
         Write metrics to the database.
 
         Args:
+            user_id (str): ID of the user.
+            job_id (str): ID of the job.
             pipeline_stage_id (str): ID of the pipeline stage.
             llm_call (Llm_Call): LLM call type.
             metrics (dict): Dictionary containing metrics to be written.
         """
+
         insert_query = """
-        INSERT INTO llm_metrics (pipeline_stage_id, llm_call, input_tokens, prompt_tokens, total_input_tokens, output_tokens, thought_tokens, confidence_score, elapsed_time)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
+        INSERT INTO llm_metrics (user_id, job_id, pipeline_stage_id, llm_call, input_tokens, prompt_tokens, total_input_tokens, output_tokens, thought_tokens, confidence_score, elapsed_time, model)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id;
         """
 
-        params = (pipeline_stage_id, llm_call, *metrics.values())
+        params = (user_id, job_id, pipeline_stage_id, llm_call, *metrics.values())
         self.cursor.execute(insert_query, params)
         self.conn.commit()
+
+        llm_metrics_id = self.cursor.fetchone()[0]
+        return llm_metrics_id
 
     def read_stage(self, job_id: uuid, pipeline_name: str) -> dict:
         """
@@ -410,11 +416,14 @@ class Database:
         """
         insert_query = """
         INSERT INTO pipeline_outputs (pipeline_stage_id, data)
-        VALUES (%s, %s);
+        VALUES (%s, %s) RETURNING id;
         """
         params = (pipeline_stage_id, Json(output))
         self.cursor.execute(insert_query, params)
         self.conn.commit()
+
+        pipeline_output_id = self.cursor.fetchone()[0]
+        return pipeline_output_id
 
     # def read_job(self, job_id: str) -> list[dict]:
     #     """
@@ -471,7 +480,7 @@ class Database:
 
     #     select_query = f"""
     #     SELECT sentence_index, sentence_text, importance_score
-    #     FROM user_notes
+    #     FROM note_sentences
     #     WHERE user_id = %s {search_part};
     #     """
 
@@ -496,7 +505,7 @@ class Database:
     #         note_id (str): Note ID.
     #     """
     #     delete_query = """
-    #     DELETE FROM user_notes
+    #     DELETE FROM note_sentences
     #     WHERE user_id = %s AND note_id = %s;
     #     """
     #     self.cursor.execute(delete_query, (user_id, note_id))
@@ -504,13 +513,13 @@ class Database:
 
     # def get_all_data(self):
     #     """
-    #     Fetch all entries from user_notes (Warning: Large datasets).
+    #     Fetch all entries from note_sentences (Warning: Large datasets).
 
     #     Returns:
     #         list: List of row tuples.
     #     """
     #     self.cursor.execute(
-    #         "SELECT user_id, note_id, sentence_index, sentence_text, timestamp, date FROM user_notes;"
+    #         "SELECT user_id, note_id, sentence_index, sentence_text, created_at FROM note_sentences;"
     #     )
     #     return self.cursor.fetchall()
 
@@ -524,7 +533,7 @@ class Database:
     #         sentence_index (int): Index of the sentence within the note.
     #     """
     #     delete_query = """
-    #     DELETE FROM user_notes
+    #     DELETE FROM note_sentences
     #     WHERE user_id = %s AND note_id = %s AND sentence_index = %s;
     #     """
     #     self.cursor.execute(delete_query, (user_id, note_id, sentence_index))

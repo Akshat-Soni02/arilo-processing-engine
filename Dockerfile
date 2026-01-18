@@ -1,6 +1,4 @@
-# syntax=docker/dockerfile:1
 FROM python:3.14-slim-bookworm AS builder
-# NOTE: Changed 3.14 to 3.12. Python 3.14 is experimental and likely lacks wheels for numpy/pandas.
 
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
@@ -9,7 +7,6 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Sync deps
-# CRITICAL FIX: Added --no-install-project
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \

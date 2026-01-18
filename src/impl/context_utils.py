@@ -10,7 +10,7 @@ from pipeline.exceptions import FatalPipelineError, TransientPipelineError
 logger = get_logger(__name__)
 
 
-def prepare_context_for_noteback(context_response: dict, vector_db: Database) -> list:
+def prepare_context_for_noteback(context_response: dict, vector_db: Database, user_id: str) -> list:
     """
     Perform multi-anchor similarity search using context preparation output.
 
@@ -64,7 +64,9 @@ def prepare_context_for_noteback(context_response: dict, vector_db: Database) ->
                 "Searching similarity anchor", extra={"index": idx, "total": len(search_anchors)}
             )
 
-            results, chars_used = vector_db.similarity_search(user_id="123", query=anchor, top_k=3)
+            results, chars_used = vector_db.similarity_search(
+                user_id=user_id, query=anchor, top_k=3
+            )
             total_query_chars += chars_used
 
             if results is None:
@@ -191,6 +193,98 @@ def format_sentences(context_response: dict) -> list:
 
     logger.debug("Sentence formatting completed", extra={"count": len(formatted_sentences)})
     return formatted_sentences
+
+
+def current_note_sentences_with_embeddings(context_response: dict, vector_db: Database) -> list:
+    """
+    Extract the current note sentences and add embeddings with importance scores.
+
+    Args:
+        context_response (dict): Response dict from context preparation.
+        vector_db (Database): Initialized vector database instance.
+
+    Returns:
+        list: Array of sentences with embeddings and importance scores.
+    """
+    logger.debug("Extracting note sentences with embeddings")
+
+    if context_response is None or not isinstance(context_response, dict):
+        logger.error("Invalid context response format: Expected dict")
+        raise FatalPipelineError("Invalid context response format: Expected dict")
+
+    sentences_data = context_response.get("input_to_sentences", [])
+
+    if not sentences_data:
+        logger.warning("No sentences found in context response")
+        raise FatalPipelineError("No sentences found in context response")
+
+    if not isinstance(sentences_data, list):
+        logger.error(
+            "Invalid sentences_data format: Expected list",
+            extra={"type": type(sentences_data).__name__},
+        )
+        raise FatalPipelineError("Invalid sentences_data format: Expected list")
+
+    sentences_with_embeddings = []
+    failed_sentences = 0
+
+    for idx, entry in enumerate(sentences_data, 1):
+        try:
+            if entry is None or not isinstance(entry, dict):
+                logger.warning(
+                    "Invalid entry type", extra={"index": idx, "type": type(entry).__name__}
+                )
+                failed_sentences += 1
+                raise FatalPipelineError("Invalid entry type")
+
+            if "sentence" not in entry or "importance_score" not in entry:
+                logger.warning("Missing required fields in sentence entry", extra={"index": idx})
+                failed_sentences += 1
+                raise FatalPipelineError("Missing required fields in sentence entry")
+
+            sentence_text = entry["sentence"]
+            importance_score = entry["importance_score"]
+
+            if not isinstance(sentence_text, str):
+                logger.warning(
+                    "Invalid sentence text type",
+                    extra={"index": idx, "type": type(sentence_text).__name__},
+                )
+                failed_sentences += 1
+                raise FatalPipelineError("Invalid sentence text type")
+
+            if not isinstance(importance_score, (int, float)):
+                logger.warning(
+                    "Invalid importance_score type",
+                    extra={"index": idx, "type": type(importance_score).__name__},
+                )
+                failed_sentences += 1
+                raise TransientPipelineError("Invalid importance_score type")
+
+            sentence_embedding, _ = vector_db._generate_sentence_embedding(sentence_text)
+            sentences_with_embeddings.append(
+                {
+                    "sentence_index": idx,
+                    "sentence_text": sentence_text,
+                    "importance_score": importance_score,
+                    "embedding": sentence_embedding,
+                }
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to format sentence", extra={"index": idx, "error": str(e)}, exc_info=True
+            )
+            failed_sentences += 1
+            raise FatalPipelineError("Failed to format sentence")
+
+    if failed_sentences > 0:
+        logger.warning(
+            "Failed to format some sentences",
+            extra={"failed": failed_sentences, "total": len(sentences_data)},
+        )
+
+    logger.debug("Sentence extraction completed", extra={"count": len(sentences_with_embeddings)})
+    return sentences_with_embeddings
 
 
 # Depricated
