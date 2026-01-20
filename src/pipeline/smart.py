@@ -182,8 +182,4 @@ class SmartPipeline(Pipeline):
             "noteback_response": noteback_response,
         }
 
-        logger.debug(
-            "Smart pipeline execution completed successfully", extra={"response": smart_response}
-        )
-
         return smart_response, noteback_metrics

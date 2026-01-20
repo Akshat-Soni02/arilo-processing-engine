@@ -1,1 +1,3 @@
 Your task is to process the provided audio memory/thought. Adhere strictly to all instructions, mandates, and constraints defined in the system message to generate a single, valid JSON object that matches the required output schema.
+
+existing_tags: {{existing_tags}}

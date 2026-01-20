@@ -40,8 +40,18 @@ class SttPipeline(Pipeline):
         if not input_data:
             raise FatalPipelineError("Empty or null input provided")
 
+        existing_tags = context.get("existing_tags", "")
+
+        replace = [
+            {
+                "type": "prompt",
+                "replace_key": "{{existing_tags}}",
+                "replace_value": existing_tags,
+            }
+        ]
+
         try:
-            stt_input_data = get_llm_input(Llm_Call.STT, input_data, input_type)
+            stt_input_data = get_llm_input(Llm_Call.STT, input_data, input_type, replace)
         except Exception as e:
             raise FatalPipelineError("Failed to prepare input data", original_error=e)
 
