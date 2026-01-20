@@ -313,7 +313,7 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             "location": data.get("location"),
             "timestamp": data.get("timestamp"),
             "input_type": data.get("input_type"),
-            # "existing_tags": data.get("existing_tags")
+            "existing_tags": data.get("existing_tags"),
         }
 
         # DB Stage Handling and Checkout

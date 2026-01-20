@@ -117,8 +117,6 @@ class Pipeline(ABC):
             "error": error_info,
         }
 
-        self.logger.info("Sending upstream payload", extra={"payload": upstream_payload})
-
         # Final callback to upstream
         self._send_upstream(upstream_payload)
 

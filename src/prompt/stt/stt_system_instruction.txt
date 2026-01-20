@@ -49,7 +49,7 @@ Your task is to take user audio and return a JSON object with exactly five field
 
    MANDATE #1: Use Existing Tags First (Unlimited)
       **CONTEXT:** You are given:
-      existing_tags: {{existing_tags}}
+      existing_tags
       Rules:
          You may freely use any relevant existing tags.
          These do NOT count toward the new-tag limit.
