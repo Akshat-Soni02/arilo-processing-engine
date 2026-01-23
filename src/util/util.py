@@ -37,7 +37,17 @@ def upstream_call(upstream_output: dict):
         response.raise_for_status()
         logger.debug("Upstream transmission successful", extra={"response": response.text})
     except requests.exceptions.HTTPError as e:
-        error_message = e.response.json().get("error", "Unknown API error")
-        logger.error("Upstream HTTP error", extra={"error": error_message})
+        try:
+            error_details = e.response.json()
+            error_message = error_details.get(
+                "error", error_details.get("message", "Unknown API error")
+            )
+        except (ValueError, AttributeError):
+            error_message = f"HTTP {e.response.status_code}: {e.response.text[:100]}"
+
+        logger.error(
+            "Upstream HTTP error",
+            extra={"error": error_message, "status_code": e.response.status_code},
+        )
     except requests.exceptions.RequestException as e:
         logger.critical("Upstream request failed", extra={"error": str(e)})

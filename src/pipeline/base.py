@@ -89,7 +89,7 @@ class Pipeline(ABC):
                 },
                 exc_info=True,
             )
-            raise TransientPipelineError("Unhandled exception in pipeline", original_error=e)
+            raise FatalPipelineError("Unhandled exception in pipeline", original_error=e)
 
         # if successfull then
         # insert output, update status to completed, increment attempt count

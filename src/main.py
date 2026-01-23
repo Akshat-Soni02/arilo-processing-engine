@@ -377,7 +377,17 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
         logger.critical(
             "Unexpected error in request handler", extra={"error": str(e)}, exc_info=True
         )
-        # TODO: update pipeline status to failed
+        try:
+            request.app.state.vector_db.update_pipeline_stage_status(
+                context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
+            )
+            request.app.state.vector_db.update_pipeline_stage_error(
+                context["pipeline_stage_id"],
+                Pipeline_Stage_Errors.INTERNAL_ERROR,
+            )
+        except Exception as db_err:
+            logger.error("Failed to update DB on crash", extra={"error": str(db_err)})
+
         _send_upstream_status(data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e)
         return JSONResponse(status_code=500, content={"error": "Internal server error"})
 

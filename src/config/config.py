@@ -57,7 +57,7 @@ class Stt_Call_Config:
 
 
 class Context_Call_Config:
-    MODEL = Models.GEMINI_2_5_PRO
+    MODEL = Models.GEMINI_2_5_FLASH
     TOKEN_LIMIT = 65535
     PROMPT_FILE_PATH = "src/prompt/context/context_prompt.txt"
     SYSTEM_INSTRUCTION_FILE_PATH = "src/prompt/context/context_system_instruction.txt"

@@ -17,7 +17,15 @@ class TestSmartPipeline(unittest.TestCase):
             db=self.mock_db,
         )
 
-        self.context = {"pipeline_stage_id": "test_stage", "input_type": "AUDIO_WAV"}
+        self.context = {
+            "pipeline_stage_id": "test_stage",
+            "input_type": "AUDIO_WAV",
+            "user_id": "test_user",
+            "job_id": "test_job",
+            "note_id": "test_note",
+        }
+
+        self.mock_db._generate_sentence_embedding.return_value = ([0.1, 0.2], 10)
         self.input_data = b"test_input"
 
     # --- Success Case ---
@@ -33,7 +41,11 @@ class TestSmartPipeline(unittest.TestCase):
         noteback_input = {"prompt": "noteback"}
         mock_get_input.side_effect = [smart_input, noteback_input]
 
-        smart_response = {"search_anchors": ["a1"]}
+        smart_response = {
+            "search_anchors": ["a1"],
+            "input_to_sentences": [{"sentence": "test", "importance_score": 0.5}],
+        }
+
         smart_metrics = {"lat": 10}
         noteback_response = {"note": "final note"}
         noteback_metrics = {"lat": 20}
@@ -51,7 +63,19 @@ class TestSmartPipeline(unittest.TestCase):
         response, metrics = self.pipeline._process(self.input_data, self.context)
 
         # Assertions
-        self.assertEqual(response, noteback_response)
+        expected_response = {
+            "sentences_with_embeddings": [
+                {
+                    "sentence_index": 1,
+                    "sentence_text": "test",
+                    "importance_score": 0.5,
+                    "embedding": [0.1, 0.2],
+                }
+            ],
+            "noteback_response": noteback_response,
+        }
+        self.assertEqual(response, expected_response)
+
         self.assertEqual(metrics, noteback_metrics)
 
         # Verify call order and args
@@ -59,7 +83,7 @@ class TestSmartPipeline(unittest.TestCase):
         mock_get_input.assert_any_call(Llm_Call.SMART, self.input_data, "AUDIO_WAV")
         # 2. call_llm for Smart
         # 3. prepare_context & format_sentences
-        mock_prep_context.assert_called_with(smart_response, self.mock_db)
+        mock_prep_context.assert_called_with(smart_response, self.mock_db, "test_user")
         # 4. get_llm_input for Noteback (with replacements)
         # 5. call_llm for Noteback
 
@@ -122,7 +146,14 @@ class TestSmartPipeline(unittest.TestCase):
         mock_format.return_value = []
 
         # Smart succeeds, Noteback fails
-        mock_call_llm.side_effect = [({"ok": True}, {}), TransientPipelineError("Noteback busy")]
+        smart_response = {
+            "search_anchors": ["a1"],
+            "input_to_sentences": [{"sentence": "test", "importance_score": 0.5}],
+        }
+        mock_call_llm.side_effect = [
+            (smart_response, {}),
+            TransientPipelineError("Noteback busy"),
+        ]
 
         with self.assertRaises(TransientPipelineError):
             self.pipeline._process(self.input_data, self.context)

@@ -11,6 +11,11 @@ class PipelineError(Exception):
         super().__init__(message)
         self.original_error = original_error
 
+    def __str__(self):
+        if self.original_error:
+            return f"{super().__str__()}: {str(self.original_error)}"
+        return super().__str__()
+
 
 class FatalPipelineError(PipelineError):
     """

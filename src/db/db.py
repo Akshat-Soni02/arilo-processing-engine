@@ -300,9 +300,8 @@ class Database:
 
         params = (user_id, job_id, pipeline_stage_id, llm_call, *metrics.values())
         self.cursor.execute(insert_query, params)
-        self.conn.commit()
-
         llm_metrics_id = self.cursor.fetchone()[0]
+        self.conn.commit()
         return llm_metrics_id
 
     def read_stage(self, job_id: uuid, pipeline_name: str) -> dict:
@@ -420,9 +419,8 @@ class Database:
         """
         params = (pipeline_stage_id, Json(output))
         self.cursor.execute(insert_query, params)
-        self.conn.commit()
-
         pipeline_output_id = self.cursor.fetchone()[0]
+        self.conn.commit()
         return pipeline_output_id
 
     # def read_job(self, job_id: str) -> list[dict]:

@@ -143,7 +143,7 @@ class SmartPipeline(Pipeline):
                 },
             ]
 
-            noteback_input_data = get_llm_input(Llm_Call.NOTEBACK, input_data, input_type, replace)
+            noteback_input_data = get_llm_input(Llm_Call.NOTEBACK, "", "", replace)
             if noteback_input_data is None:
                 raise FatalPipelineError("Failed to prepare noteback input data")
 

@@ -68,7 +68,7 @@ class TestContextUtils(unittest.TestCase):
 
         expected = ["sentence_text: similar text, value_score: 0.88"]
 
-        result = prepare_context_for_noteback(context_response, self.mock_db)
+        result = prepare_context_for_noteback(context_response, self.mock_db, "test_user")
 
         self.assertEqual(result, expected)
         self.mock_db.similarity_search.assert_called_once()
@@ -77,12 +77,12 @@ class TestContextUtils(unittest.TestCase):
         """Verify FatalPipelineError when no search anchors exist."""
         context_response = {"search_anchors": []}
         with self.assertRaises(FatalPipelineError):
-            prepare_context_for_noteback(context_response, self.mock_db)
+            prepare_context_for_noteback(context_response, self.mock_db, "test_user")
 
     def test_prepare_context_db_uninitialized(self):
         """Verify FatalPipelineError when DB is None."""
         with self.assertRaises(FatalPipelineError):
-            prepare_context_for_noteback({"search_anchors": ["a"]}, None)
+            prepare_context_for_noteback({"search_anchors": ["a"]}, None, "test_user")
 
     def test_prepare_context_search_failure(self):
         """Verify FatalPipelineError when similarity search fails completely."""
@@ -90,4 +90,4 @@ class TestContextUtils(unittest.TestCase):
         self.mock_db.similarity_search.side_effect = Exception("DB Error")
 
         with self.assertRaises(FatalPipelineError):
-            prepare_context_for_noteback(context_response, self.mock_db)
+            prepare_context_for_noteback(context_response, self.mock_db, "test_user")

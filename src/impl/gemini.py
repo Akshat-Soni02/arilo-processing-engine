@@ -158,6 +158,7 @@ class GeminiProvider:
             "response_modalities": ["TEXT"],
             "safety_settings": safety_settings,
             "system_instruction": [types.Part.from_text(text=si_text)],
+            "thinking_config": types.ThinkingConfig(thinking_budget=0),
         }
 
         if response_schema:
@@ -258,17 +259,17 @@ class GeminiProvider:
             raise ValueError("Missing required fields")
 
         content_part = None
+        user_data = input_data.get("user_data", None)
 
         # Build content part based on input type
-        if input_type == "audio/wav":
-            audio_bytes = input_data.get("user_data", None)
-            content_part = types.Part.from_bytes(
-                data=audio_bytes,
-                mime_type=input_type,
-            )
-        elif input_type == "text/plain":
-            text_bytes = input_data.get("user_data", None)
-            content_part = types.Part.from_text(text=text_bytes)
+        if input_type and user_data:
+            if input_type == "audio/wav":
+                content_part = types.Part.from_bytes(
+                    data=user_data,
+                    mime_type=input_type,
+                )
+            elif input_type == "text/plain":
+                content_part = types.Part.from_text(text=user_data)
 
         # Build parts list
         parts = [types.Part.from_text(text=prompt)]
