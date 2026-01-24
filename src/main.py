@@ -306,6 +306,12 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
 
         data = payload
         logger.info("Received request", extra={"data": data})
+
+        if data.get("allowed_pipelines") and pipeline_type not in data.get("allowed_pipelines"):
+            return JSONResponse(
+                status_code=200, content={"error": "Ignored request, pipeline not allowed"}
+            )
+
         context = {
             "job_id": data.get("job_id"),
             "note_id": data.get("note_id"),
