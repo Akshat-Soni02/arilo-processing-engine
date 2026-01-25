@@ -757,6 +757,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-json-logger" },
     { name = "python-multipart" },
+    { name = "tenacity" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -791,6 +792,7 @@ requires-dist = [
     { name = "python-json-logger" },
     { name = "python-multipart" },
     { name = "ruff", marker = "extra == 'dev'" },
+    { name = "tenacity", specifier = ">=9.1.2" },
     { name = "uvicorn", extras = ["standard"] },
 ]
 provides-extras = ["dev"]

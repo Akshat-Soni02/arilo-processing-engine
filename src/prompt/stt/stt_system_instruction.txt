@@ -73,7 +73,7 @@ Your task is to take user audio and return a JSON object with exactly five field
       (D) Formatting
          Lowercase
          Single word
-         CamelCase only for multi-word proper nouns
+         snake_case for multi-word proper nouns (e.g. red_fort)
 
    MANDATE #3: Order
       Tags must be output in this order:

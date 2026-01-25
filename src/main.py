@@ -398,6 +398,7 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
         return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 
+# todo: add llm output checks
 @app.post("/branch/subcription/smart")
 async def smart_branch(request: Request):
     """

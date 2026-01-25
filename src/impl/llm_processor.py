@@ -9,7 +9,7 @@ from pipeline.exceptions import FatalPipelineError, TransientPipelineError
 logger = get_logger(__name__)
 
 
-def call_llm(provider, input_data: dict, call_name: str):
+def call_llm(provider, input_data: dict, call_name: str, validator=None):
     """
     Stateless wrapper for executing LLM processing with response tracking.
 
@@ -17,6 +17,7 @@ def call_llm(provider, input_data: dict, call_name: str):
         provider (GeminiProvider): Stateless provider instance to use.
         input_data (dict): Request parameters (model, prompt, etc.).
         call_name (str): Identifier for the call context (e.g., 'STT', 'SMART').
+        validator (callable, optional): Validation function to check the response.
 
     Returns:
         tuple: (response_payload, metrics_dict) or (None, None) on validation or execution failure.
@@ -53,6 +54,17 @@ def call_llm(provider, input_data: dict, call_name: str):
                 "Unexpected response format",
                 extra={"call_name": call_name, "type": type(response).__name__},
             )
+
+        if validator:
+            try:
+                validator(response)
+                logger.debug("Response validation successful", extra={"call_name": call_name})
+            except Exception as e:
+                logger.warning(
+                    "Response validation failed",
+                    extra={"call_name": call_name, "error": str(e)},
+                )
+                raise
 
         return response, metrics
 
