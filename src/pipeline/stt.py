@@ -4,13 +4,14 @@ Processes audio input to generate text transcriptions.
 """
 
 from typing import Any, Dict, Optional, Tuple
-from config.config import Llm_Call, User_Input_Type, Pipeline as PipelineEnum
+from config.config import Llm_Call, User_Input_Type, Pipeline as PipelineEnum, Plan_Type
 from impl.gemini import GeminiProvider
 from impl.llm_input import get_llm_input
 from impl.llm_processor import call_llm
 from pipeline.base import Pipeline
 from db.db import Database
 from pipeline.exceptions import FatalPipelineError, TransientPipelineError
+from impl.context_utils import current_note_sentences_with_embeddings
 
 
 class SttPipeline(Pipeline):
@@ -51,7 +52,9 @@ class SttPipeline(Pipeline):
         ]
 
         try:
-            stt_input_data = get_llm_input(Llm_Call.STT, input_data, input_type, replace)
+            stt_input_data = get_llm_input(
+                Llm_Call.STT, input_data, input_type, replace, context.get("plan_type")
+            )
         except Exception as e:
             raise FatalPipelineError("Failed to prepare input data", original_error=e)
 
@@ -93,4 +96,22 @@ class SttPipeline(Pipeline):
         if not isinstance(response, dict):
             self.logger.warning("Unexpected response type", extra={"type": type(response).__name__})
 
-        return response, metrics
+        sentences_with_embeddings = None
+        if context.get("plan_type") == Plan_Type.FREE:
+            try:
+                sentences_with_embeddings = current_note_sentences_with_embeddings(
+                    response, self.db
+                )
+            except (TransientPipelineError, FatalPipelineError):
+                raise
+            except Exception as e:
+                raise TransientPipelineError(
+                    "Failed to prepare sentences with embeddings", original_error=e
+                )
+
+        stt_response = {
+            "sentences_with_embeddings": sentences_with_embeddings,
+            "stt_response": response,
+        }
+
+        return stt_response, metrics

@@ -320,7 +320,10 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             "timestamp": data.get("timestamp"),
             "input_type": data.get("input_type"),
             "existing_tags": data.get("existing_tags"),
+            "plan_type": data.get("plan_type"),
         }
+
+        logger.info("Context", extra={"context": context})
 
         # DB Stage Handling and Checkout
         pipeline_stage_id, early_response = _handle_stage_checkout(

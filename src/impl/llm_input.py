@@ -1,9 +1,8 @@
 from config.config import (
     Llm_Call,
     User_Input_Type,
-    Stt_Call_Config,
-    Context_Call_Config,
-    Noteback_Call_Config,
+    Plan_Type,
+    LLM_CONFIG,
 )
 from common.utils import read_file
 from typing import Optional, Sequence
@@ -14,41 +13,34 @@ def get_llm_input(
     input: Optional[bytes] = None,
     input_type: Optional[User_Input_Type] = None,
     replace: Optional[Sequence[dict]] = None,
+    plan_type: Optional[Plan_Type] = None,
 ):
+    """
+    Get the structured LLM input dictionary based on call type and plan.
+    """
+    # Default to FREE plan if not specified or invalid
+    if not plan_type or plan_type not in LLM_CONFIG:
+        plan_type = Plan_Type.FREE
 
-    if llm_call == Llm_Call.STT:
-        return prepare_llm_input(Stt_Call_Config, input, input_type, replace)
-    if llm_call == Llm_Call.SMART:
-        return prepare_llm_input(Context_Call_Config, input, input_type, replace)
-    if llm_call == Llm_Call.NOTEBACK:
-        return prepare_llm_input(Noteback_Call_Config, input, input_type, replace)
-    return None
+    config = LLM_CONFIG[plan_type].get(llm_call)
+    if not config:
+        return None
+
+    return prepare_llm_input(config, input, input_type, replace)
 
 
 def prepare_llm_input(
-    input_config: dict,
+    config: dict,
     input: Optional[bytes] = None,
     input_type: Optional[User_Input_Type] = None,
     replace: Optional[Sequence[dict]] = None,
 ) -> dict:
     """
-    Docstring for prepare_llm_input
-
-    :param input_config: Description
-    :type input_config: dict
-    :param replace: Description
-    :type replace: dict
-
-    replace: [{
-        "type": prompt/sys,
-        "replace_key": "your replace key",
-        "replace_value": "your replace value"
-    }]
+    Take configuration dictionary and build the actual LLM input.
     """
-    # take input as the configs and give structured dict output after reading files
-    prompt_file_path = input_config.PROMPT_FILE_PATH
-    system_instruction_file_path = input_config.SYSTEM_INSTRUCTION_FILE_PATH
-    response_schema_file_path = input_config.RESPONSE_SCHEMA_FILE_PATH
+    prompt_file_path = config.get("PROMPT_FILE_PATH")
+    system_instruction_file_path = config.get("SYSTEM_INSTRUCTION_FILE_PATH")
+    response_schema_file_path = config.get("RESPONSE_SCHEMA_FILE_PATH")
 
     prompt = None
     system_instruction = None
@@ -75,8 +67,8 @@ def prepare_llm_input(
                 )
 
     llm_input = {
-        "model": input_config.MODEL,
-        "token_limit": input_config.TOKEN_LIMIT,
+        "model": config.get("MODEL"),
+        "token_limit": config.get("TOKEN_LIMIT"),
         "prompt": prompt,
         "system_instruction": system_instruction,
         "response_schema": response_schema,

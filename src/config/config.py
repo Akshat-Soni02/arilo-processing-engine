@@ -48,25 +48,56 @@ class User_Input_Type(str, Enum):
     TEXT_PLAIN = "text/plain"
 
 
-class Stt_Call_Config:
-    MODEL = Models.GEMINI_2_5_FLASH
-    TOKEN_LIMIT = 65535
-    PROMPT_FILE_PATH = "src/prompt/stt/stt_prompt.txt"
-    SYSTEM_INSTRUCTION_FILE_PATH = "src/prompt/stt/stt_system_instruction.txt"
-    RESPONSE_SCHEMA_FILE_PATH = "src/prompt/stt/stt_response_schema.json"
+class Plan_Type(str, Enum):
+    FREE = "FREE"
+    PRO_MONTHLY = "PRO_MONTHLY"
 
 
-class Context_Call_Config:
-    MODEL = Models.GEMINI_2_5_FLASH
-    TOKEN_LIMIT = 65535
-    PROMPT_FILE_PATH = "src/prompt/context/context_prompt.txt"
-    SYSTEM_INSTRUCTION_FILE_PATH = "src/prompt/context/context_system_instruction.txt"
-    RESPONSE_SCHEMA_FILE_PATH = "src/prompt/context/context_response_schema.json"
-
-
-class Noteback_Call_Config:
-    MODEL = Models.GEMINI_2_5_FLASH
-    TOKEN_LIMIT = 65535
-    PROMPT_FILE_PATH = "src/prompt/noteback/noteback_prompt.txt"
-    SYSTEM_INSTRUCTION_FILE_PATH = "src/prompt/noteback/noteback_system_instruction.txt"
-    RESPONSE_SCHEMA_FILE_PATH = "src/prompt/noteback/noteback_response_schema.json"
+LLM_CONFIG = {
+    Plan_Type.FREE: {
+        Llm_Call.STT: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/free/stt/stt_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/free/stt/stt_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/free/stt/stt_response_schema.json",
+        },
+        Llm_Call.SMART: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/free/context/context_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/free/context/context_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/free/context/context_response_schema.json",
+        },
+        Llm_Call.NOTEBACK: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/free/noteback/noteback_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/free/noteback/noteback_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/free/noteback/noteback_response_schema.json",
+        },
+    },
+    Plan_Type.PRO_MONTHLY: {
+        Llm_Call.STT: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/pro/stt/stt_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/pro/stt/stt_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/pro/stt/stt_response_schema.json",
+        },
+        Llm_Call.SMART: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/pro/context/context_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/pro/context/context_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/pro/context/context_response_schema.json",
+        },
+        Llm_Call.NOTEBACK: {
+            "MODEL": Models.GEMINI_2_5_FLASH,
+            "TOKEN_LIMIT": 65535,
+            "PROMPT_FILE_PATH": "src/prompt/pro/noteback/noteback_prompt.txt",
+            "SYSTEM_INSTRUCTION_FILE_PATH": "src/prompt/pro/noteback/noteback_system_instruction.txt",
+            "RESPONSE_SCHEMA_FILE_PATH": "src/prompt/pro/noteback/noteback_response_schema.json",
+        },
+    },
+}

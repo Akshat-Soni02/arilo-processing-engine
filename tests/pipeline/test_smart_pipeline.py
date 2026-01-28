@@ -80,7 +80,7 @@ class TestSmartPipeline(unittest.TestCase):
 
         # Verify call order and args
         # 1. get_llm_input for Smart
-        mock_get_input.assert_any_call(Llm_Call.SMART, self.input_data, "AUDIO_WAV")
+        mock_get_input.assert_any_call(Llm_Call.SMART, self.input_data, "AUDIO_WAV", plan_type=None)
         # 2. call_llm for Smart
         # 3. prepare_context & format_sentences
         mock_prep_context.assert_called_with(smart_response, self.mock_db, "test_user")

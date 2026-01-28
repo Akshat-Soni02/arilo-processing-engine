@@ -112,6 +112,7 @@ class Pipeline(ABC):
             "timestamp": context.get("timestamp"),
             "output": response,
             "input_type": context.get("input_type"),
+            "plan_type": context.get("plan_type"),
             "pipeline_stage": self.name,
             "status": Pipeline_Stage_Status.COMPLETED.value,
             "error": error_info,

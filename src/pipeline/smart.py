@@ -55,7 +55,9 @@ class SmartPipeline(Pipeline):
             raise FatalPipelineError("Empty or null input provided")
 
         try:
-            smart_input_data = get_llm_input(Llm_Call.SMART, input_data, input_type)
+            smart_input_data = get_llm_input(
+                Llm_Call.SMART, input_data, input_type, plan_type=context.get("plan_type")
+            )
         except Exception as e:
             raise FatalPipelineError("Failed to prepare input data", original_error=e)
 
@@ -143,7 +145,9 @@ class SmartPipeline(Pipeline):
                 },
             ]
 
-            noteback_input_data = get_llm_input(Llm_Call.NOTEBACK, "", "", replace)
+            noteback_input_data = get_llm_input(
+                Llm_Call.NOTEBACK, "", "", replace, plan_type=context.get("plan_type")
+            )
             if noteback_input_data is None:
                 raise FatalPipelineError("Failed to prepare noteback input data")
 

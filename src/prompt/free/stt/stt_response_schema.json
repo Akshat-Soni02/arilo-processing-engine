@@ -1,0 +1,64 @@
+{
+  "type": "object",
+  "properties": {
+    "stt": {
+      "type": "string",
+      "description": "Verbatim speech-to-text transcription."
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of actionable items derived from the audio."
+    },
+    "anxiety_score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1 is low (calm), 5 is high (panicked/fast/strained)."
+    },
+    "language": {
+      "type": "string",
+      "description": "ISO 639-1 language code (e.g., 'en', 'hi')."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of single-word, singular tags for organization (e.g., 'redFort', 'rohit', 'goa')."
+    },
+    "input_to_sentences": {
+      "type": "array",
+      "description": "A complete, natural-English breakdown of the input into clean, standalone sentences, each tagged with an importance score.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sentence": {
+            "type": "string",
+            "description": "A polished, standalone sentence preserving original meaning and tone."
+          },
+          "importance_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "A real-valued importance score indicating how critical this sentence is for contextual retrieval."
+          }
+        },
+        "required": [
+          "sentence",
+          "importance_score"
+        ]
+      }
+    }
+  },
+  "required": [
+    "stt",
+    "tasks",
+    "anxiety_score",
+    "language",
+    "tags",
+    "input_to_sentences"
+  ]
+}
