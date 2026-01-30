@@ -297,6 +297,8 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
     Common wrapper for handling pipeline requests.
     Parses Pub/Sub message, prepares input, and triggers the specified pipeline.
     """
+    data = None
+    context = None
     try:
         payload = await _parse_pubsub_payload(request)
         if payload is None:
@@ -333,6 +335,7 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             return early_response
 
         context["pipeline_stage_id"] = pipeline_stage_id
+        raise TransientPipelineError("test error for retrying test", original_error=None)
 
         # Prepare Input Data
         input_data, error_msg = _get_pipeline_input(context["input_type"], data)
@@ -361,16 +364,18 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             logger.error(
                 "Fatal pipeline error, acking message", extra={"error": str(e)}, exc_info=True
             )
-            request.app.state.vector_db.update_pipeline_stage_status(
-                context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
-            )
-            request.app.state.vector_db.update_pipeline_stage_error(
-                context["pipeline_stage_id"],
-                Pipeline_Stage_Errors.INTERNAL_ERROR,
-            )
-            _send_upstream_status(
-                data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
-            )
+            if context and "pipeline_stage_id" in context:
+                request.app.state.vector_db.update_pipeline_stage_status(
+                    context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
+                )
+                request.app.state.vector_db.update_pipeline_stage_error(
+                    context["pipeline_stage_id"],
+                    Pipeline_Stage_Errors.INTERNAL_ERROR,
+                )
+            if data and context:
+                _send_upstream_status(
+                    data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
+                )
             return JSONResponse(
                 status_code=200, content={"status": "fatal_pipeline_error", "message": str(e)}
             )
@@ -379,6 +384,14 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             logger.warning(
                 "Transient pipeline error, retrying message", extra={"error": str(e)}, exc_info=True
             )
+            try:
+                if context and "pipeline_stage_id" in context:
+                    request.app.state.vector_db.update_pipeline_stage_status(
+                        context["pipeline_stage_id"], Pipeline_Stage_Status.PENDING
+                    )
+            except Exception as db_err:
+                logger.error("Failed to update DB on crash", extra={"error": str(db_err)})
+                logger.error("As db update failed, pipeline will not retry this")
 
             return JSONResponse(status_code=503, content={"status": "transient_pipeline_error"})
 
@@ -387,17 +400,21 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             "Unexpected error in request handler", extra={"error": str(e)}, exc_info=True
         )
         try:
-            request.app.state.vector_db.update_pipeline_stage_status(
-                context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
-            )
-            request.app.state.vector_db.update_pipeline_stage_error(
-                context["pipeline_stage_id"],
-                Pipeline_Stage_Errors.INTERNAL_ERROR,
-            )
+            if context and "pipeline_stage_id" in context:
+                request.app.state.vector_db.update_pipeline_stage_status(
+                    context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
+                )
+                request.app.state.vector_db.update_pipeline_stage_error(
+                    context["pipeline_stage_id"],
+                    Pipeline_Stage_Errors.INTERNAL_ERROR,
+                )
         except Exception as db_err:
             logger.error("Failed to update DB on crash", extra={"error": str(db_err)})
 
-        _send_upstream_status(data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e)
+        if data and context:
+            _send_upstream_status(
+                data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
+            )
         return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
 
