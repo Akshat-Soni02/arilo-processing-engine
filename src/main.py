@@ -346,54 +346,49 @@ async def process_pipeline_request(request: Request, pipeline_type: Pipeline):
             return JSONResponse(status_code=status_code, content={"error": error_msg})
 
         # Execute Pipeline Task using run_in_threadpool
+        if pipeline_type == Pipeline.SMART:
+            await run_in_threadpool(request.app.state.smart_pipeline.run, input_data, context)
+        elif pipeline_type == Pipeline.STT:
+            await run_in_threadpool(request.app.state.stt_pipeline.run, input_data, context)
+        else:
+            return JSONResponse(status_code=200, content={"error": "Dropped unknown pipeline type"})
+
+        return JSONResponse(
+            status_code=200, content={"status": "ok", "branch": pipeline_type.value}
+        )
+
+    except FatalPipelineError as e:
+        logger.error("Fatal pipeline error, acking message", extra={"error": str(e)}, exc_info=True)
+        if context and "pipeline_stage_id" in context:
+            request.app.state.vector_db.update_pipeline_stage_status(
+                context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
+            )
+            request.app.state.vector_db.update_pipeline_stage_error(
+                context["pipeline_stage_id"],
+                Pipeline_Stage_Errors.INTERNAL_ERROR,
+            )
+        if data and context:
+            _send_upstream_status(
+                data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
+            )
+        return JSONResponse(
+            status_code=200, content={"status": "fatal_pipeline_error", "message": str(e)}
+        )
+
+    except TransientPipelineError as e:
+        logger.warning(
+            "Transient pipeline error, retrying message", extra={"error": str(e)}, exc_info=True
+        )
         try:
-            if pipeline_type == Pipeline.SMART:
-                await run_in_threadpool(request.app.state.smart_pipeline.run, input_data, context)
-            elif pipeline_type == Pipeline.STT:
-                await run_in_threadpool(request.app.state.stt_pipeline.run, input_data, context)
-            else:
-                return JSONResponse(
-                    status_code=200, content={"error": "Dropped unknown pipeline type"}
-                )
-
-            return JSONResponse(
-                status_code=200, content={"status": "ok", "branch": pipeline_type.value}
-            )
-
-        except FatalPipelineError as e:
-            logger.error(
-                "Fatal pipeline error, acking message", extra={"error": str(e)}, exc_info=True
-            )
             if context and "pipeline_stage_id" in context:
                 request.app.state.vector_db.update_pipeline_stage_status(
-                    context["pipeline_stage_id"], Pipeline_Stage_Status.FAILED
+                    context["pipeline_stage_id"], Pipeline_Stage_Status.PENDING
                 )
-                request.app.state.vector_db.update_pipeline_stage_error(
-                    context["pipeline_stage_id"],
-                    Pipeline_Stage_Errors.INTERNAL_ERROR,
-                )
-            if data and context:
-                _send_upstream_status(
-                    data, context, pipeline_type, Pipeline_Stage_Status.FAILED, error=e
-                )
-            return JSONResponse(
-                status_code=200, content={"status": "fatal_pipeline_error", "message": str(e)}
-            )
+        except Exception as db_err:
+            logger.error("Failed to update DB on crash", extra={"error": str(db_err)})
+            logger.error("As db update failed, pipeline will not retry this")
 
-        except TransientPipelineError as e:
-            logger.warning(
-                "Transient pipeline error, retrying message", extra={"error": str(e)}, exc_info=True
-            )
-            try:
-                if context and "pipeline_stage_id" in context:
-                    request.app.state.vector_db.update_pipeline_stage_status(
-                        context["pipeline_stage_id"], Pipeline_Stage_Status.PENDING
-                    )
-            except Exception as db_err:
-                logger.error("Failed to update DB on crash", extra={"error": str(db_err)})
-                logger.error("As db update failed, pipeline will not retry this")
-
-            return JSONResponse(status_code=503, content={"status": "transient_pipeline_error"})
+        return JSONResponse(status_code=503, content={"status": "transient_pipeline_error"})
 
     except Exception as e:
         logger.critical(
